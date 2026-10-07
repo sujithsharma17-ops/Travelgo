@@ -2,11 +2,13 @@ const express=require('express'),cors=require('cors'),mysql=require('mysql2/prom
 const bcrypt=require('bcryptjs'),jwt=require('jsonwebtoken');
 const db=mysql.createPool({host:process.env.DB_HOST||'localhost',user:process.env.DB_USER||'root',
  password:process.env.DB_PASS||'',database:process.env.DB_NAME||'travelgo',port:+(process.env.DB_PORT||3306),
- connectionLimit:3,ssl:process.env.DB_SSL==='true'?{rejectUnauthorized:true}:undefined});
+ connectionLimit:3,ssl:['true','insecure'].includes(process.env.DB_SSL)?{rejectUnauthorized:process.env.DB_SSL==='true'}:undefined});
 const SECRET=process.env.JWT_SECRET||'dev-secret-change-me';
 const app=express();app.use(cors(),express.json(),express.static(path.join(__dirname,'public')));
 const wrap=f=>(q,r,n)=>f(q,r,n).catch(e=>{console.error(e);r.status(500).json({success:false,message:'Server error'})});
 const fail=(r,c,m)=>r.status(c).json({success:false,message:m});
+
+app.get('/api/health',async(q,r)=>{try{await db.query('SELECT 1');r.json({ok:true})}catch(e){r.status(500).json({ok:false,error:e.code||'DB connection failed'})}});
 
 // one-time setup: users table, bookings.user_id, default admin account
 let ready;const init=()=>ready||(ready=(async()=>{
