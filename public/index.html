@@ -1,0 +1,125 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TravelGo</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#14302b;--sea:#0f766e;--sand:#f7f3ea;--sun:#e8a33d;--line:#dcd6c6}
+*{box-sizing:border-box}body{margin:0;font:16px/1.5 Inter,sans-serif;background:var(--sand);color:var(--ink)}
+h1,h2,h3{font-family:Fraunces,serif;margin:0}a{color:inherit;text-decoration:none}
+nav{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav b{font:800 22px Fraunces,serif;color:var(--sea)}nav div{display:flex;gap:18px;font-weight:500}
+.hero{padding:64px 20px;background:linear-gradient(rgba(10,40,36,.62),rgba(10,40,36,.62)),url(https://picsum.photos/seed/india/1400/700) center/cover;color:#fff}
+.hero h1{font-size:clamp(34px,7vw,64px);max-width:640px;line-height:1.05}.hero p{max-width:480px}
+.wrap{max-width:1100px;margin:auto;padding:24px 20px}
+.search{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+input,select{padding:11px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;width:100%}
+.search input{flex:1;min-width:200px;width:auto}
+.btn{background:var(--sea);color:#fff;border:0;padding:11px 20px;border-radius:8px;font:600 15px Inter;cursor:pointer;display:inline-block}
+.btn.alt{background:var(--sun);color:var(--ink)}.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--sun)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px}
+.card{background:#fff;border-radius:10px;overflow:hidden;border:1px solid var(--line);display:flex;flex-direction:column}
+.card img{width:100%;height:160px;object-fit:cover;background:var(--sea)}.card div{padding:14px;display:flex;flex-direction:column;gap:4px;flex:1}
+.muted{color:#5b6b66;font-size:14px}.price{font:700 20px Fraunces,serif}
+.filters{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap}.filters select{width:auto}
+.panel{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;max-width:460px}
+.panel label{display:block;margin:12px 0 4px;font-weight:500}.err{background:#fde8e4;color:#9b2c1c;padding:10px;border-radius:8px;margin-top:12px}
+.det{display:grid;grid-template-columns:1.3fr 1fr;gap:24px}.det img{width:100%;border-radius:10px}
+@media(max-width:760px){.det{grid-template-columns:1fr}}
+ul.inc{padding:0;list-style:none}ul.inc li:before{content:"✓ ";color:var(--sea);font-weight:700}
+table{width:100%;border-collapse:collapse;background:#fff}td,th{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}
+.scroll{overflow-x:auto}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.stats div{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px}.stats b{font:800 26px Fraunces,serif;display:block}
+.qty{display:flex;align-items:center;gap:14px}.qty button{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:18px;cursor:pointer}
+</style></head><body><div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const{useState,useEffect}=React;const inr=n=>'₹'+Number(n).toLocaleString('en-IN');
+const fmt=d=>new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+const getAuth=()=>{try{return JSON.parse(localStorage.getItem('tg')||'null')}catch(e){return null}};
+const setAuth=a=>{try{a?localStorage.setItem('tg',JSON.stringify(a)):localStorage.removeItem('tg')}catch(e){}dispatchEvent(new Event('authchange'))};
+const api=async(u,o={})=>{const a=getAuth();const r=await fetch('/api'+u,{...o,headers:{...(o.body?{'Content-Type':'application/json'}:{}),...(a?{Authorization:'Bearer '+a.token}:{}),...o.headers}});
+ const j=await r.json();if(!r.ok)throw new Error(j.message||'Request failed');return j};
+function useApi(url){const[s,set]=useState({loading:true});const[k,setK]=useState(0);
+ useEffect(()=>{set({loading:true});api(url).then(data=>set({data})).catch(e=>set({error:e.message}))},[url,k]);
+ return{...s,retry:()=>setK(k+1)}}
+function Async({s,children}){if(s.loading)return<p className="muted">Loading…</p>;
+ if(s.error)return<div className="err">{s.error} <button className="btn" onClick={s.retry}>Try again</button></div>;return children(s.data)}
+function TourCard({t}){return<div className="card"><img src={t.image} alt={t.title}/><div>
+ <h3>{t.title}</h3><span className="muted">{t.destination} · {t.duration_days} days / {t.duration_days-1} nights · ★ {t.rating}</span>
+ <p className="muted">{t.description}</p><span className="price" style={{marginTop:'auto'}}>{inr(t.price)} <small className="muted">/ person</small></span>
+ <a className="btn" href={'#/tours/'+t.id}>View details</a></div></div>}
+function Home(){const[q,setQ]=useState('');const s=useApi('/tours');
+ return<><div className="hero"><h1>Explore India. Create memories.</h1><p>Hand-picked trips from beach weekends to Himalayan winters.</p>
+ <form className="search" onSubmit={e=>{e.preventDefault();location.hash='#/tours?search='+encodeURIComponent(q)}}>
+ <input placeholder="Where do you want to go?" value={q} onChange={e=>setQ(e.target.value)}/><button className="btn alt">Search</button></form></div>
+ <div className="wrap"><h2 style={{marginBottom:14}}>Popular tours</h2><Async s={s}>{d=><div className="grid">{d.slice(0,6).map(t=><TourCard key={t.id} t={t}/>)}</div>}</Async></div></>}
+function Tours({query}){const p=new URLSearchParams(query);const[search,setSearch]=useState(p.get('search')||'');
+ const[dest,setDest]=useState('');const[max,setMax]=useState('');
+ const url='/tours?'+new URLSearchParams({search,destination:dest,maxPrice:max});const s=useApi(url);
+ return<div className="wrap"><h2>All tours</h2><div className="filters">
+ <input style={{width:220}} placeholder="Search destination" value={search} onChange={e=>setSearch(e.target.value)}/>
+ <select value={dest} onChange={e=>setDest(e.target.value)}><option value="">All destinations</option>{['Goa','Manali','Kerala','Hyderabad','Rajasthan'].map(d=><option key={d}>{d}</option>)}</select>
+ <select value={max} onChange={e=>setMax(e.target.value)}><option value="">Any price</option><option value="5000">Up to ₹5,000</option><option value="10000">Up to ₹10,000</option><option value="15000">Up to ₹15,000</option></select></div>
+ <Async s={s}>{d=>d.length?<div className="grid">{d.map(t=><TourCard key={t.id} t={t}/>)}</div>:<p>No tours match. Try a different destination or price.</p>}</Async></div>}
+function Detail({id}){const s=useApi('/tours/'+id);
+ return<div className="wrap"><Async s={s}>{t=><div className="det"><div><img src={t.image} alt={t.title}/></div><div>
+ <h1>{t.title}</h1><p className="muted">{t.destination} · {t.duration_days} days / {t.duration_days-1} nights · ★ {t.rating}</p>
+ <p className="price">{inr(t.price)} / person</p><p>{t.description}</p><h3>What's included</h3>
+ <ul className="inc">{(t.inclusions||'').split(',').map(i=><li key={i}>{i}</li>)}</ul><a className="btn alt" href={'#/book/'+t.id}>Book now</a></div></div>}</Async></div>}
+function Book({id}){const s=useApi('/tours/'+id);const[f,setF]=useState({name:'',email:'',phone:'',travel_date:'',people:2});const[err,setErr]=useState('');const[busy,setBusy]=useState(false);
+ const set=k=>e=>setF({...f,[k]:e.target.value});
+ const submit=async(t)=>{setErr('');setBusy(true);try{const r=await api('/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...f,tour_id:t.id})});location.hash='#/confirmed/'+r.id}catch(e){setErr(e.message)}setBusy(false)};
+ return<div className="wrap"><Async s={s}>{t=><div className="panel"><h2>Book {t.title}</h2>
+ <label>Name</label><input value={f.name} onChange={set('name')}/><label>Email</label><input type="email" value={f.email} onChange={set('email')}/>
+ <label>Phone</label><input inputMode="numeric" value={f.phone} onChange={set('phone')}/><label>Travel date</label><input type="date" value={f.travel_date} onChange={set('travel_date')}/>
+ <label>Guests</label><div className="qty"><button onClick={()=>setF({...f,people:Math.max(1,f.people-1)})}>−</button><b>{f.people}</b><button onClick={()=>setF({...f,people:Math.min(20,f.people+1)})}>+</button></div>
+ <p className="muted">{inr(t.price)} per person</p><p className="price">Total {inr(t.price*f.people)}</p>
+ {err&&<div className="err" role="alert">⚠️ {err}</div>}<button className="btn" disabled={busy} style={{marginTop:14}} onClick={()=>submit(t)}>{busy?'Booking…':'Confirm booking'}</button></div>}</Async></div>}
+function Confirmed({id}){const s=useApi('/bookings/'+id);
+ return<div className="wrap"><Async s={s}>{b=><div className="panel"><h2>✓ Booking confirmed</h2><p>Thank you, {b.name}.</p><h3>{b.title}</h3>
+ <p>Travel date: {fmt(b.travel_date)}<br/>Guests: {b.people}<br/>Total: <b>{inr(b.total_price)}</b><br/>Booking ID: <b>#TG{10000+b.id}</b></p><a className="btn" href="#/tours">Browse more tours</a></div>}</Async></div>}
+function Gate({children}){const a=getAuth();return a&&a.user.role==='admin'?children:<div className="wrap"><div className="err">Admin access only. <a href="#/login"><u>Log in as admin</u></a></div></div>}
+function AdminNav(){return<div className="filters"><a className="btn" href="#/admin">Bookings</a><a className="btn" href="#/admin/tours">Tours</a></div>}
+function Admin(){const s=useApi('/bookings');
+ const setStatus=async(id,status)=>{await api('/bookings/'+id+'/status',{method:'PUT',body:JSON.stringify({status})});s.retry()};
+ return<div className="wrap"><h2 style={{marginBottom:14}}>Admin · Bookings</h2><AdminNav/><Async s={s}>{d=><><div className="stats">
+ <div><b>{d.length}</b>Bookings</div><div><b>{inr(d.filter(x=>x.status!=='Cancelled').reduce((a,x)=>a+x.total_price,0))}</b>Revenue</div><div><b>{d.filter(x=>x.status==='Pending').length}</b>Pending</div></div>
+ <div className="scroll"><table><thead><tr><th>ID</th><th>Customer</th><th>Tour</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead><tbody>
+ {d.map(b=><tr key={b.id}><td>{b.id}</td><td>{b.name}</td><td>{b.title}</td><td>{fmt(b.travel_date)}</td><td>{inr(b.total_price)}</td>
+ <td><select value={b.status} onChange={e=>setStatus(b.id,e.target.value)}>{['Pending','Confirmed','Completed','Cancelled'].map(x=><option key={x}>{x}</option>)}</select></td></tr>)}</tbody></table></div></>}</Async></div>}
+const blank={title:'',destination:'',description:'',inclusions:'',duration_days:3,price:'',image:''};
+function AdminTours(){const s=useApi('/tours');const[f,setF]=useState(blank);const[id,setId]=useState(null);const[err,setErr]=useState('');
+ const set=k=>e=>setF({...f,[k]:e.target.value});
+ const save=async()=>{setErr('');try{await api(id?'/tours/'+id:'/tours',{method:id?'PUT':'POST',body:JSON.stringify(f)});setF(blank);setId(null);s.retry()}catch(e){setErr(e.message)}};
+ const del=async t=>{if(!confirm('Delete '+t.title+'?'))return;setErr('');try{await api('/tours/'+t.id,{method:'DELETE'});s.retry()}catch(e){setErr(e.message)}};
+ return<div className="wrap"><h2 style={{marginBottom:14}}>Admin · Tours</h2><AdminNav/>
+ <div className="panel" style={{maxWidth:'none',marginBottom:18}}><h3>{id?'Edit tour':'Add new tour'}</h3>
+ {[['title','Tour name'],['destination','Destination'],['description','Description'],['inclusions','Inclusions (comma separated)'],['duration_days','Duration (days)'],['price','Price per person (₹)'],['image','Image URL']].map(([k,l])=><div key={k}><label>{l}</label><input value={f[k]??''} onChange={set(k)}/></div>)}
+ {err&&<div className="err" role="alert">⚠️ {err}</div>}
+ <button className="btn" style={{marginTop:14}} onClick={save}>{id?'Save changes':'Create tour'}</button>{id&&<button className="btn alt" style={{marginLeft:8}} onClick={()=>{setId(null);setF(blank)}}>Cancel</button>}</div>
+ <Async s={s}>{d=><div className="scroll"><table><thead><tr><th>Tour</th><th>Destination</th><th>Price</th><th>Actions</th></tr></thead><tbody>
+ {d.map(t=><tr key={t.id}><td>{t.title}</td><td>{t.destination}</td><td>{inr(t.price)}</td><td><button className="btn" onClick={()=>{setId(t.id);setF({...t});scrollTo(0,0)}}>Edit</button> <button className="btn alt" onClick={()=>del(t)}>Delete</button></td></tr>)}</tbody></table></div>}</Async></div>}
+function AuthForm({mode}){const reg=mode==='register';const[f,setF]=useState({name:'',email:'',password:''});const[err,setErr]=useState('');
+ const set=k=>e=>setF({...f,[k]:e.target.value});
+ const go=async()=>{setErr('');try{const r=await api(reg?'/auth/register':'/auth/login',{method:'POST',body:JSON.stringify(f)});setAuth(r);location.hash=r.user.role==='admin'?'#/admin':'#/'}catch(e){setErr(e.message)}};
+ return<div className="wrap"><div className="panel"><h2>{reg?'Create account':'Welcome back'}</h2>
+ {reg&&<><label>Name</label><input value={f.name} onChange={set('name')}/></>}<label>Email</label><input type="email" value={f.email} onChange={set('email')}/>
+ <label>Password</label><input type="password" value={f.password} onChange={set('password')}/>{err&&<div className="err" role="alert">⚠️ {err}</div>}
+ <button className="btn" style={{marginTop:14}} onClick={go}>{reg?'Register':'Log in'}</button>
+ <p className="muted">{reg?<>Have an account? <a href="#/login"><u>Log in</u></a></>:<>New here? <a href="#/register"><u>Create an account</u></a></>}</p></div></div>}
+function MyList(){const s=useApi('/my-bookings');return<div className="wrap"><h2 style={{marginBottom:14}}>My bookings</h2><Async s={s}>{d=>d.length?<div className="grid">{d.map(b=>
+ <div className="card" key={b.id}><div><h3>{b.title}</h3><span className="muted">{fmt(b.travel_date)} · {b.people} guests</span><span className="price">{inr(b.total_price)}</span><span>Status: <b>{b.status}</b></span></div></div>)}</div>:<p>No bookings yet. <a href="#/tours"><u>Browse tours</u></a></p>}</Async></div>}
+function MyBookings(){return getAuth()?<MyList/>:<div className="wrap"><div className="err">Please <a href="#/login"><u>log in</u></a> to see your bookings.</div></div>}
+function App(){const[h,setH]=useState(location.hash||'#/');const[,bump]=useState(0);
+ useEffect(()=>{const f=()=>{setH(location.hash||'#/');scrollTo(0,0)},g=()=>bump(x=>x+1);addEventListener('hashchange',f);addEventListener('authchange',g);return()=>{removeEventListener('hashchange',f);removeEventListener('authchange',g)}},[]);
+ const au=getAuth();const[path,query]=h.slice(1).split('?');const[,a,b]=path.split('/');
+ let v=<Home/>;if(a==='tours')v=b?<Detail id={b} key={b}/>:<Tours query={query} key={query}/>;
+ else if(a==='book')v=<Book id={b}/>;else if(a==='confirmed')v=<Confirmed id={b}/>;
+ else if(a==='admin')v=<Gate>{b==='tours'?<AdminTours/>:<Admin/>}</Gate>;
+ else if(a==='login')v=<AuthForm mode="login" key="l"/>;else if(a==='register')v=<AuthForm mode="register" key="r"/>;else if(a==='my-bookings')v=<MyBookings/>;
+ return<><nav><a href="#/"><b>TravelGo</b></a><div><a href="#/">Home</a><a href="#/tours">Tours</a>
+ {au&&au.user.role==='admin'&&<a href="#/admin">Admin</a>}{au&&au.user.role!=='admin'&&<a href="#/my-bookings">My bookings</a>}
+ {au?<a href="#/" onClick={()=>setAuth(null)}>Log out</a>:<a href="#/login">Log in</a>}</div></nav>{v}</>}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script></body></html>
